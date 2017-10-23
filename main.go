@@ -44,8 +44,15 @@ func GetTagInfo(tag string) (name string, isOptional bool) {
 	return
 }
 
+func GetImportedPackageTypeInfo(t ast.SelectorExpr) string {
+	typeStr := fmt.Sprintf("%s.%s", t.X, t.Sel)
+
+	return
+}
+
 // TODO Test the Recursion
 // Better Map --> Object handling
+// Figure out how to handle imported packages (ex time.Time)
 func GetTypeInfo(fieldType ast.Expr) string {
 	// Handle Arrays
 	switch t := fieldType.(type) {
@@ -58,6 +65,16 @@ func GetTypeInfo(fieldType ast.Expr) string {
 		keyType := GetTypeInfo(t.Key)
 		valueType := GetTypeInfo(t.Value)
 		return fmt.Sprintf("{[%s]: %s}", keyType, valueType)
+	// Imported type package.T
+	case *ast.SelectorExpr:
+		typeStr := fmt.Sprintf("%s.%s", t.X, t.Sel)
+		flowType, ok := goTypeToFlowType[typeStr]
+		if !ok {
+			// TODO What to do here when we don't recognize this package?
+			return typeStr
+		} else {
+			return flowType
+		}
 	// T
 	case *ast.Ident:
 		flowType, ok := goTypeToFlowType[t.Name]
