@@ -20,7 +20,8 @@ var goTypeToFlowType = map[string]string{
 	"time.Time": "string",
 }
 
-// GetTagInfo returns a Struct Field's tag name and whether or not it is optional
+// GetTagInfo returns the name of the JSON field and whether or not the field is
+// optional based on a struct field's tag
 func GetTagInfo(tag string) (name string, isOptional bool) {
 	name = ""
 	isOptional = false
@@ -44,17 +45,14 @@ func GetTagInfo(tag string) (name string, isOptional bool) {
 	return
 }
 
-func GetImportedPackageTypeInfo(t ast.SelectorExpr) string {
-	typeStr := fmt.Sprintf("%s.%s", t.X, t.Sel)
-
-	return
-}
-
-// TODO Test the Recursion
-// Better Map --> Object handling
-// Figure out how to handle imported packages (ex time.Time)
+// GetTypeInfo returns a string representing the Flow type for a given fieldType
+// that's an ast.Expr
+// TODO Kristie 10/24/17
+// - Add tests
+// - Specifically test the recursion
+// - Better Map --> Object handling
+// - Figure out how to handle imported packages and their definitions in Flow
 func GetTypeInfo(fieldType ast.Expr) string {
-	// Handle Arrays
 	switch t := fieldType.(type) {
 	// []T
 	case *ast.ArrayType:
@@ -72,64 +70,70 @@ func GetTypeInfo(fieldType ast.Expr) string {
 		if !ok {
 			// TODO What to do here when we don't recognize this package?
 			return typeStr
-		} else {
-			return flowType
 		}
+		return flowType
 	// T
 	case *ast.Ident:
+		// Primitives will exist in the map
 		flowType, ok := goTypeToFlowType[t.Name]
-		if !ok {
-			return "MISSING_TYPE_DEF_IN_MAP"
-		} else {
+		// Custom type definitions in this package will have a non-nil t.Obj
+		isCustomType := t.Obj != nil
+		if isCustomType {
+			return t.Name
+		} else if ok {
 			return flowType
+		} else {
+			return "MISSING_TYPE_DEF_IN_MAP"
 		}
 	}
 	return "UNKNOWN_EXPR_TYPE"
 }
 
 func handleField(f ast.Field) {
-	printf := fmt.Printf
 	tag := f.Tag.Value
 	name, isOptional := GetTagInfo(tag)
 	if name == "" {
 		return
 	}
 
-	printf("  %s", name)
+	fmt.Printf("  %s", name)
 	// https://flow.org/en/docs/types/primitives/#toc-optional-object-properties
 	if isOptional {
-		printf("?: ")
+		fmt.Printf("?: ")
 	} else {
-		printf(": ")
+		fmt.Printf(": ")
 	}
 
 	fieldType := GetTypeInfo(f.Type)
 	fmt.Print(fieldType)
-	printf(",\n")
+	fmt.Printf(",\n")
 }
 
-func handleTypeDef(t ast.TypeSpec) {
-	if !t.Name.IsExported() {
+func handleTypeDef(ts ast.TypeSpec) {
+	if !ts.Name.IsExported() {
 		// Do not handle unexported structs
 		return
 	}
-	structDecl, ok := t.Type.(*ast.StructType)
-	if !ok {
-		// Do not handle non-struct types
+
+	switch t := ts.Type.(type) {
+	// type MyAlias string
+	case *ast.Ident:
+		fmt.Printf("type %s = %s; \n\n", ts.Name, ts.Type)
 		return
+	case *ast.StructType:
+		fmt.Printf("type %s {\n", ts.Name)
+		fields := t.Fields.List
+		for _, field := range fields {
+			handleField(*field)
+		}
+		fmt.Printf("}\n\n")
+		return
+		// Don't handle anything else
 	}
-	printf := fmt.Printf
-	printf("type %s {\n", t.Name)
-	fields := structDecl.Fields.List
-	for _, field := range fields {
-		handleField(*field)
-	}
-	printf("}\n")
-	printf("\n")
 	return
 }
 
-// Given an ast node, handle a node if it is a type definition
+// TypeDefInspector handles ast nodes if they are type definitions
 func TypeDefInspector(node ast.Node) bool {
 	// Check if this node is a type definition
 	ts, ok := node.(*ast.TypeSpec)
@@ -139,16 +143,22 @@ func TypeDefInspector(node ast.Node) bool {
 	return true
 }
 
+// TODO Kristie 10/24/17
+// - Accept a file from the CLI arg
+// - Accept a folder from the CLI arg
+// - Dockerize development
+// - Put the output through Prettier (use a container)
+// - Optionally keep the comments by the struct defs?
+// - Handle definitions not in the struct tags (talk to Maxime)
 func main() {
 	// Create a new set of source files
 	fset := token.NewFileSet()
 	// Parse the src file's information into the astNode, including the comments
-	astNode, err := parser.ParseFile(fset, "fixtures/test_program.go", nil, parser.ParseComments)
+	astNode, err := parser.ParseFile(fset, "samples/test_program.go", nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Inspect the AST using the inspector that handles only type definitions
 	ast.Inspect(astNode, TypeDefInspector)
-	// fmt.Println(astNode.Scope)
-
 }

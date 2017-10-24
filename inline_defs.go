@@ -104,7 +104,3 @@ func main() {
 	printf("}\n")
 }
 */
-
-func hello() {
-
-}
