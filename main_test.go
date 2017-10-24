@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// TODO Kristie 10/24/17 - Update to include the edge cases in
+// https://golang.org/pkg/encoding/json/#Marshal
 func TestGetTagInfo(t *testing.T) {
 	type testCase struct {
 		Tag         string
@@ -39,16 +41,28 @@ func TestGetTagInfo(t *testing.T) {
 			"Missing json tag",
 		},
 		{
-			`kub:"otherthings"`,
+			`protobuf:"otherthings"`,
 			"",
 			false,
 			"Non-json tag",
 		},
 		{
-			`kub:"otherthings,omitempty"`,
+			`protobuf:"otherthings,omitempty"`,
 			"",
 			false,
 			"Non-json tag with optional",
+		},
+		{
+			`json:"date,omitempty" protobuf:"bytes,1,opt,name=name"`,
+			"date",
+			true,
+			"json tag first with additional defns",
+		},
+		{
+			`protobuf:"bytes,1,opt,name=name" json:"date,omitempty"`,
+			"date",
+			true,
+			"json tag second with additional defns",
 		},
 	}
 

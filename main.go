@@ -22,6 +22,8 @@ var goTypeToFlowType = map[string]string{
 
 // GetTagInfo returns the name of the JSON field and whether or not the field is
 // optional based on a struct field's tag
+// TODO Kristie 10/24/17 - Update to include the edge cases in
+// https://golang.org/pkg/encoding/json/#Marshal
 func GetTagInfo(tag string) (name string, isOptional bool) {
 	name = ""
 	isOptional = false
@@ -52,6 +54,10 @@ func GetTagInfo(tag string) (name string, isOptional bool) {
 // - Specifically test the recursion
 // - Better Map --> Object handling
 // - Figure out how to handle imported packages and their definitions in Flow
+// - Handle embedded types
+// - Handle pointers (nullable types) in addition to `omitempty` (optional types)
+// - Option to keep comments?
+// - Handle unexported fields
 func GetTypeInfo(fieldType ast.Expr) string {
 	switch t := fieldType.(type) {
 	// []T
@@ -154,7 +160,8 @@ func main() {
 	// Create a new set of source files
 	fset := token.NewFileSet()
 	// Parse the src file's information into the astNode, including the comments
-	astNode, err := parser.ParseFile(fset, "samples/test_program.go", nil, parser.ParseComments)
+	// astNode, err := parser.ParseFile(fset, "samples/test_program.go", nil, parser.ParseComments)
+	astNode, err := parser.ParseFile(fset, "samples/kube_types_sample.go", nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}
