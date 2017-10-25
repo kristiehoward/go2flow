@@ -192,8 +192,7 @@ func main() {
 	// Create a new set of source files
 	fset := token.NewFileSet()
 	// Parse the src file's information into the astNode, including the comments
-	// astNode, err := parser.ParseFile(fset, "samples/test_program.go", nil, parser.ParseComments)
-	astNode, err := parser.ParseFile(fset, "../../docker/saas-mega/services/billing-api/model/subscriptions.go", nil, parser.ParseComments)
+	astNode, err := parser.ParseFile(fset, "samples/test_program.go", nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}
