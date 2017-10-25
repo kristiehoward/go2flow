@@ -51,15 +51,19 @@ func GetTagInfo(tag string) (name string, isOptional bool) {
 // that's an ast.Expr
 // TODO Kristie 10/24/17
 // - Add tests
-// - Specifically test the recursion
+// - Specifically test the recursion, nullable, and optional types
 // - Better Map --> Object handling
 // - Figure out how to handle imported packages and their definitions in Flow
 // - Handle embedded types
-// - Handle pointers (nullable types) in addition to `omitempty` (optional types)
 // - Option to keep comments?
 // - Handle unexported fields
 func GetTypeInfo(fieldType ast.Expr) string {
 	switch t := fieldType.(type) {
+	// *T
+	case *ast.StarExpr:
+		// Return the type of T, assume that the meaning of the pointer was
+		// handled in the calling function
+		return GetTypeInfo(t.X)
 	// []T
 	case *ast.ArrayType:
 		elementType := GetTypeInfo(t.Elt)
@@ -84,10 +88,10 @@ func GetTypeInfo(fieldType ast.Expr) string {
 		flowType, ok := goTypeToFlowType[t.Name]
 		// Custom type definitions in this package will have a non-nil t.Obj
 		isCustomType := t.Obj != nil
-		if isCustomType {
-			return t.Name
-		} else if ok {
+		if ok {
 			return flowType
+		} else if isCustomType {
+			return t.Name
 		} else {
 			return "MISSING_TYPE_DEF_IN_MAP"
 		}
@@ -95,17 +99,33 @@ func GetTypeInfo(fieldType ast.Expr) string {
 	return "UNKNOWN_EXPR_TYPE"
 }
 
+// Given a field, return if it is nullable. A field is nullable if it is a pointer.
+// A nil pointer generates `null` in the JSON output
+func isNullable(f ast.Field) bool {
+	_, ok := f.Type.(*ast.StarExpr)
+	// This is a StarExpr, which is a pointer
+	return ok
+}
+
 func handleField(f ast.Field) {
 	tag := f.Tag.Value
+	// A field is optional if the json tag includes `omitempty`
 	name, isOptional := GetTagInfo(tag)
+	// A field is nullable if the identifier is a pointer (nil pointer --> null JSON)
+	isNullable := isNullable(f)
 	if name == "" {
 		return
 	}
 
 	fmt.Printf("  %s", name)
-	// https://flow.org/en/docs/types/primitives/#toc-optional-object-properties
 	if isOptional {
+		// https://flow.org/en/docs/types/primitives/#toc-optional-object-properties
 		fmt.Printf("?: ")
+	} else if isNullable {
+		// If a type is optional AND nullable, it will not show up in the json
+		// response, so we can assume the types here are required
+		// https://flow.org/en/docs/types/primitives/#toc-maybe-types
+		fmt.Printf(": ?")
 	} else {
 		fmt.Printf(": ")
 	}
@@ -123,8 +143,20 @@ func handleTypeDef(ts ast.TypeSpec) {
 
 	switch t := ts.Type.(type) {
 	// type MyAlias string
+	// type MyAlias2 AnotherType
 	case *ast.Ident:
-		fmt.Printf("type %s = %s; \n\n", ts.Name, ts.Type)
+		fmt.Printf("type %s = %s;\n\n", ts.Name, GetTypeInfo(t))
+		return
+	// type MyAlias []AnotherType
+	case *ast.ArrayType:
+		elementType := GetTypeInfo(t.Elt)
+		fmt.Printf("type %s = Array<%s>;\n\n", ts.Name, elementType)
+		return
+	// type MyAlias map[boolean]AnotherType
+	case *ast.MapType:
+		keyType := GetTypeInfo(t.Key)
+		valueType := GetTypeInfo(t.Value)
+		fmt.Printf("type %s = {[%s]: %s};\n\n", ts.Name, keyType, valueType)
 		return
 	case *ast.StructType:
 		fmt.Printf("type %s {\n", ts.Name)
@@ -161,7 +193,7 @@ func main() {
 	fset := token.NewFileSet()
 	// Parse the src file's information into the astNode, including the comments
 	// astNode, err := parser.ParseFile(fset, "samples/test_program.go", nil, parser.ParseComments)
-	astNode, err := parser.ParseFile(fset, "samples/kube_types_sample.go", nil, parser.ParseComments)
+	astNode, err := parser.ParseFile(fset, "../../docker/saas-mega/services/billing-api/model/subscriptions.go", nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}
