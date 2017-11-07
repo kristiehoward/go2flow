@@ -162,21 +162,21 @@ func handleTypeDef(ts ast.TypeSpec) {
 	// type MyAlias string
 	// type MyAlias2 AnotherType
 	case *ast.Ident:
-		fmt.Printf("type %s = %s;\n\n", ts.Name, GetTypeInfo(t))
+		fmt.Printf("export type %s = %s;\n\n", ts.Name, GetTypeInfo(t))
 		return
 	// type MyAlias []AnotherType
 	case *ast.ArrayType:
 		elementType := GetTypeInfo(t.Elt)
-		fmt.Printf("type %s = Array<%s>;\n\n", ts.Name, elementType)
+		fmt.Printf("export type %s = Array<%s>;\n\n", ts.Name, elementType)
 		return
 	// type MyAlias map[boolean]AnotherType
 	case *ast.MapType:
 		keyType := GetTypeInfo(t.Key)
 		valueType := GetTypeInfo(t.Value)
-		fmt.Printf("type %s = {[%s]: %s};\n\n", ts.Name, keyType, valueType)
+		fmt.Printf("export type %s = {[%s]: %s};\n\n", ts.Name, keyType, valueType)
 		return
 	case *ast.StructType:
-		fmt.Printf("type %s {\n", ts.Name)
+		fmt.Printf("export type %s = {\n", ts.Name)
 		fields := t.Fields.List
 		for _, field := range fields {
 			handleField(*field)
