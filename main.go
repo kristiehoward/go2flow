@@ -6,8 +6,11 @@ import (
 	"go/parser"
 	"go/token"
 	"log"
+	"os"
 	"regexp"
 	"strings"
+
+	"github.com/codegangsta/cli"
 )
 
 // Map the string representation of each reflect.Type to the Flow type for that
@@ -19,6 +22,20 @@ var goTypeToFlowType = map[string]string{
 	"string":    "string",
 	"time.Time": "string",
 }
+
+const (
+	appName  = "Go2Flow"
+	appUsage = `Convert Golang types to Flow types`
+)
+
+var (
+	flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "file, f",
+			Usage: ".go file to consume",
+		},
+	}
+)
 
 // GetTagInfo returns the name of the JSON field and whether or not the field is
 // optional based on a struct field's tag
@@ -181,6 +198,28 @@ func TypeDefInspector(node ast.Node) bool {
 	return true
 }
 
+func run(c *cli.Context) error {
+	file := c.String("file")
+
+	// TODO Maxime 11/5/2017
+	// Check if the file passed in the CLI has the .go extension
+	if file == "" {
+		fmt.Println("Please specify a .go file to consume")
+		return nil
+	}
+	// Create a new set of source files
+	fset := token.NewFileSet()
+	// Parse the src file's information into the astNode, including the comments
+	astNode, err := parser.ParseFile(fset, file, nil, parser.ParseComments)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Inspect the AST using the inspector that handles only type definitions
+	ast.Inspect(astNode, TypeDefInspector)
+	return nil
+}
+
 // TODO Kristie 10/24/17
 // - Accept a file from the CLI arg
 // - Accept a folder from the CLI arg
@@ -189,14 +228,15 @@ func TypeDefInspector(node ast.Node) bool {
 // - Optionally keep the comments by the struct defs?
 // - Handle definitions not in the struct tags (talk to Maxime)
 func main() {
-	// Create a new set of source files
-	fset := token.NewFileSet()
-	// Parse the src file's information into the astNode, including the comments
-	astNode, err := parser.ParseFile(fset, "samples/test_program.go", nil, parser.ParseComments)
-	if err != nil {
+	app := cli.NewApp()
+	app.Name = appName
+	app.Usage = appUsage
+	app.Version = "0.0.1"
+	app.Flags = flags
+	app.Action = run
+
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
-
-	// Inspect the AST using the inspector that handles only type definitions
-	ast.Inspect(astNode, TypeDefInspector)
+	os.Exit(0)
 }

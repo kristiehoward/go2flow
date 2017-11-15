@@ -8,7 +8,12 @@ It relies on the [JSON encoding](https://golang.org/pkg/encoding/json/) of a Go 
 
 Run the Proof of Concept on the sample file
 ```
-go run main.go
+go run main.go -f samples/kube_types_sample.go
+```
+
+Print usage
+```
+go run main.go -h
 ```
 
 Run the tests
