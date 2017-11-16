@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
 // Map the string representation of each reflect.Type to the Flow type for that
