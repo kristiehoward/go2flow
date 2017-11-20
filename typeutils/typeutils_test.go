@@ -1,8 +1,10 @@
-package main
+package typeutils
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/kristiehoward/go2flow/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO Kristie 10/24/17 - Update to include the edge cases in
@@ -71,7 +73,7 @@ func TestGetTagInfo(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Description, func(t *testing.T) {
-			name, isOptional = GetTagInfo(tc.Tag)
+			name, isOptional = utils.GetTagInfo(tc.Tag)
 			assert.Equal(t, tc.Name, name)
 			if tc.IsOptional {
 				assert.True(t, isOptional)
