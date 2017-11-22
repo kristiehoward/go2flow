@@ -4,6 +4,28 @@
 
 It relies on the [JSON encoding](https://golang.org/pkg/encoding/json/) of a Go struct (defined in struct field tags), generating Flow type definitions to be used in the consumer's JS code base.
 
+# Getting go2flow
+
+On Linux and macOS, this command will copy the go2flow executable to your current working directory:
+
+```bash
+$ docker pull kristiehoward/go2flow:latest &&
+    id=$(docker create kristiehoward/go2flow:latest) &&
+    docker cp $id:/go2flow-$(uname -s)-$(uname -m) go2flow &&
+    (docker rm $id >/dev/null)
+```
+
+On windows
+
+```bash
+$ docker pull kristiehoward/go2flow:latest &&
+    id=$(docker create kristiehoward/go2flow:latest) &&
+    docker cp $id:/go2flow-Windows-x86_64 go2flow.exe &&
+    (docker rm $id >/dev/null)
+```
+
+Run `./go2flow -h` or `./go2flow --help` to print usage.
+
 # Development
 
 Run the Proof of Concept on the sample file
@@ -26,7 +48,7 @@ go test
 - [ ] More sample files
 - [ ] Test output (return a string instead of printing)
 - [ ] Document the decisions made for translation from Go type --> JSON output --> Flow definition
-- [ ] Accept CLI args
+- [x] Accept CLI args
 
 
 # Rules
