@@ -72,7 +72,6 @@ func GetTagInfo(tag string) (name string, isOptional bool) {
 // - Better Map --> Object handling
 // - Figure out how to handle imported packages and their definitions in Flow
 // - Handle embedded types
-// - Option to keep comments?
 // - Handle unexported fields
 func GetTypeInfo(fieldType ast.Expr) string {
 	switch t := fieldType.(type) {
@@ -108,9 +107,11 @@ func GetTypeInfo(fieldType ast.Expr) string {
 		if ok {
 			return flowType
 		} else if isCustomType {
+
 			return t.Name
 		} else {
-			return "MISSING_TYPE_DEF_IN_MAP"
+			// If you don't know the type.... then just return the whole thing
+			return t.Name
 		}
 	}
 	return "UNKNOWN_EXPR_TYPE"
@@ -189,10 +190,15 @@ func handleTypeDef(ts ast.TypeSpec) {
 }
 
 // TypeDefInspector handles ast nodes if they are type definitions
+// TODO Kristie - If we want to handle comments, we'll have to grab the parent
+// and its comments and pass them into the
 func TypeDefInspector(node ast.Node) bool {
 	// Check if this node is a type definition
 	ts, ok := node.(*ast.TypeSpec)
 	if ok {
+		// fset := token.NewFileSet()
+		// ast.Print(fset, ts.Doc)
+		// ts.Doc
 		handleTypeDef(*ts)
 	}
 	return true
@@ -221,7 +227,6 @@ func run(c *cli.Context) error {
 }
 
 // TODO Kristie 10/24/17
-// - Accept a file from the CLI arg
 // - Accept a folder from the CLI arg
 // - Dockerize development
 // - Put the output through Prettier (use a container)
